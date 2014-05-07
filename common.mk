@@ -44,6 +44,7 @@ PRODUCT_PACKAGES += \
 
 # Hardware HALs
 PRODUCT_PACKAGES += \
+    audio.primary.edison \
     audio.primary.maserati \
     audio.primary.spyder \
     audio.primary.umts_spyder \
