@@ -223,9 +223,15 @@ static void wrapper_close_input_stream(struct audio_hw_device *dev,
 }
 
 static int wrapper_open_input_stream(struct audio_hw_device *dev,
-                                     audio_io_handle_t handle,
-                                     audio_devices_t devices,
-                                     struct audio_config *config,
+#ifndef ICS_AUDIO_BLOB
+                                  audio_io_handle_t handle,
+                                  audio_devices_t devices,
+                                  struct audio_config *config,
+#else
+                                  uint32_t devices, int *format,
+                                  uint32_t *channels, uint32_t *sample_rate,
+                                  audio_in_acoustics_t acoustics,
+#endif
                                      struct audio_stream_in **stream_in)
 {
     int ret;
@@ -233,8 +239,13 @@ static int wrapper_open_input_stream(struct audio_hw_device *dev,
     pthread_mutex_lock(&in_streams_mutex);
 
     WAIT_FOR_FREE();
+#ifndef ICS_AUDIO_BLOB
     ret = copy_hw_dev->open_input_stream(dev, handle, devices,
                                          config, stream_in);
+#else
+    ret = copy_hw_dev->open_input_stream(dev, devices, format,
+                                    channels, sample_rate,acoustics,stream_in);
+#endif
     UNLOCK_FREE();
 
     if (ret == 0) {
@@ -265,15 +276,20 @@ static int wrapper_open_input_stream(struct audio_hw_device *dev,
         (*stream_in)->common.set_parameters = wrapper_in_set_parameters;
         (*stream_in)->common.standby = wrapper_in_standby;
 
+#ifndef ICS_AUDIO_BLOB
         ALOGI("Wrapped an input stream: rate %d, channel_mask: %x, format: %d",
               config->sample_rate, config->channel_mask, config->format);
-
+#else
+        ALOGI("Wrapped an input stream: rate %d, channel_mask: %x, format: %d",
+              sample_rate, channels, format);
+#endif
         n_in_streams++;
     }
     pthread_mutex_unlock(&in_streams_mutex);
 
     return ret;
 }
+
 
 /* Output stream */
 
@@ -346,20 +362,34 @@ void wrapper_close_output_stream(struct audio_hw_device *dev,
     pthread_mutex_unlock(&out_streams_mutex);
 }
 
+#ifndef ICS_AUDIO_BLOB
 static int wrapper_open_output_stream(struct audio_hw_device *dev,
-                                      audio_io_handle_t handle,
-                                      audio_devices_t devices,
-                                      audio_output_flags_t flags,
-                                      struct audio_config *config,
-                                      struct audio_stream_out **stream_out)
+                                   audio_io_handle_t handle,
+                                   audio_devices_t devices,
+                                   audio_output_flags_t flags,
+                                   struct audio_config *config,
+                                   struct audio_stream_out **stream_out)
+#else
+static int wrapper_open_output_stream(struct audio_hw_device *dev,
+                                   uint32_t devices,
+                                   int *format,
+                                   uint32_t *channels,
+                                   uint32_t *sample_rate,
+                                   struct audio_stream_out **stream_out)
+#endif
 {
     int ret;
 
     pthread_mutex_lock(&out_streams_mutex);
 
     WAIT_FOR_FREE();
+#ifndef ICS_AUDIO_BLOB
     ret = copy_hw_dev->open_output_stream(dev, handle, devices,
                                           flags, config, stream_out);
+#else
+    ret = copy_hw_dev->open_output_stream(dev, devices, format,
+                                          channels, sample_rate, stream_out);
+#endif
     UNLOCK_FREE();
 
     if (ret == 0) {
@@ -390,8 +420,13 @@ static int wrapper_open_output_stream(struct audio_hw_device *dev,
         (*stream_out)->common.set_parameters = wrapper_out_set_parameters;
         (*stream_out)->common.standby = wrapper_out_standby;
 
+#ifndef ICS_AUDIO_BLOB
         ALOGI("Wrapped an output stream: rate %d, channel_mask: %x, format: %d",
               config->sample_rate, config->channel_mask, config->format);
+#else
+        ALOGI("Wrapped an output stream: rate %d, channel_mask: %x, format: %d",
+              sample_rate, channels, format);
+#endif
 
         n_out_streams++;
     }
