@@ -44,9 +44,14 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-ifeq ($(BOARD_USES_ICS_VOICE_BLOB), true)
-LOCAL_CFLAGS += -DICS_VOICE_BLOB
+ifeq ($(BOARD_USES_ICS_AUDIO_BLOB), true)
+LOCAL_CFLAGS += -DICS_AUDIO_BLOB
+else
+   ifeq ($(BOARD_USES_ICS_VOICE_BLOB), true)
+   LOCAL_CFLAGS += -DICS_VOICE_BLOB
+   endif
 endif
+
 
 LOCAL_MODULE := audio.primary.$(TARGET_DEVICE)
 
