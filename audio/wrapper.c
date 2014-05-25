@@ -200,7 +200,7 @@ static void wrapper_close_input_stream(struct audio_hw_device *dev,
                                        struct audio_stream_in *stream_in)
 {
     int i;
-
+    
     pthread_mutex_lock(&in_streams_mutex);
     for (i = 0; i < n_in_streams; i++) {
         if (in_streams[i].stream_in == stream_in) {
@@ -335,7 +335,7 @@ WRAP_STREAM_LOCKED_COMMON(standby, out, (struct audio_stream *stream),
 WRAP_STREAM_LOCKED_COMMON(set_parameters, out, (struct audio_stream *stream, const char *kv_pairs),
             (stream, kv_pairs), ("out_set_parameters: %s", kv_pairs))
 
-void wrapper_close_output_stream(struct audio_hw_device *dev,
+static void wrapper_close_output_stream(struct audio_hw_device *dev,
                             struct audio_stream_out* stream_out)
 {
     int i;
@@ -446,9 +446,20 @@ WRAP_HAL_LOCKED(set_voice_volume, (struct audio_hw_device *dev, float volume),
 #else
 static int wrapper_set_voice_volume(struct audio_hw_device *dev, float volume)
 {
-    ALOGI("ICS: set_voice_volume: %f", volume);
+    /* fix voice volume too lower first */
+    static float fixedVolume = 0.80;
+    static int fixed = 0;
+    int ret = 0;
 
-    return ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
+    ALOGI("ICS: set_voice_volume: %f", volume);
+    if (!fixed){
+         ALOGI("ICS: fixed set_voice_volume: %f", fixedVolume);
+         ret = ics_hw_dev->set_voice_volume(ics_hw_dev, fixedVolume);
+         fixed = 1;
+    }
+    else 
+         ret = ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
+    return ret;
 }
 #endif
 
@@ -466,9 +477,7 @@ WRAP_HAL_LOCKED(set_parameters, (struct audio_hw_device *dev, const char *kv_pai
 static int wrapper_set_mode_ics(struct audio_hw_device *dev, audio_mode_t mode)
 {
     ALOGI("ICS: set_mode: %d", mode);
-
     ics_hw_dev->set_mode(ics_hw_dev, mode);
-
     return wrapper_set_mode(dev, mode);
 }
 
