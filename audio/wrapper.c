@@ -447,20 +447,11 @@ WRAP_HAL_LOCKED(set_voice_volume, (struct audio_hw_device *dev, float volume),
 #ifdef ICS_VOICE_BLOB
 static int wrapper_set_voice_volume_ics(struct audio_hw_device *dev, float volume)
 {
-    /* fix voice volume too lower first */
-    static float fixedVolume = 0.80;
-    static int fixed = 0;
-    int ret = 0;
-
     ALOGI("ICS: set_voice_volume: %f", volume);
-    if (!fixed){
-         ALOGI("ICS: fixed set_voice_volume: %f", fixedVolume);
-         ret = ics_hw_dev->set_voice_volume(ics_hw_dev, fixedVolume);
-         fixed = 1;
-    }
-    else 
-         ret = ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
-    return ret;
+
+    ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
+
+    return wrapper_set_voice_volume(dev,volume);
 }
 #endif
 
