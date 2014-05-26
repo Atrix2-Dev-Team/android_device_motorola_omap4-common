@@ -60,6 +60,7 @@ static pthread_cond_t in_use_cond = PTHREAD_COND_INITIALIZER;
 #ifdef ICS_VOICE_BLOB
 static struct audio_hw_device *ics_hw_dev = NULL;
 static void *ics_dso_handle = NULL;
+static int icsblob_loaded = 0;
 #endif
 
 #define INCREMENT_IN_USE() do { pthread_mutex_lock(&in_use_mutex); \
@@ -440,11 +441,11 @@ static int wrapper_open_output_stream(struct audio_hw_device *dev,
 WRAP_HAL_LOCKED(set_master_volume, (struct audio_hw_device *dev, float volume),
                 (dev, volume), ("set_master_volume: %f", volume))
 
-#ifndef ICS_VOICE_BLOB
 WRAP_HAL_LOCKED(set_voice_volume, (struct audio_hw_device *dev, float volume),
                 (dev, volume), ("set_voice_volume: %f", volume))
-#else
-static int wrapper_set_voice_volume(struct audio_hw_device *dev, float volume)
+
+#ifdef ICS_VOICE_BLOB
+static int wrapper_set_voice_volume_ics(struct audio_hw_device *dev, float volume)
 {
     /* fix voice volume too lower first */
     static float fixedVolume = 0.80;
@@ -477,7 +478,9 @@ WRAP_HAL_LOCKED(set_parameters, (struct audio_hw_device *dev, const char *kv_pai
 static int wrapper_set_mode_ics(struct audio_hw_device *dev, audio_mode_t mode)
 {
     ALOGI("ICS: set_mode: %d", mode);
+
     ics_hw_dev->set_mode(ics_hw_dev, mode);
+
     return wrapper_set_mode(dev, mode);
 }
 
@@ -520,10 +523,14 @@ static int wrapper_close(hw_device_t *device)
     }
 
 #ifdef ICS_VOICE_BLOB
-    ics_hw_dev->common.close((hw_device_t*)ics_hw_dev);
-    ics_hw_dev = NULL;
-    dlclose(ics_dso_handle);
-    ics_dso_handle = NULL;
+    if (ics_hw_dev){
+        ics_hw_dev->common.close((hw_device_t*)ics_hw_dev);
+        ics_hw_dev = NULL;
+    }
+    if (ics_dso_handle){
+        dlclose(ics_dso_handle);
+        ics_dso_handle = NULL;
+    }
 #endif
 
     UNLOCK_FREE();
@@ -577,12 +584,13 @@ static int wrapper_open(const hw_module_t* module,
     *device = (hw_device_t*)adev;
 
 #ifdef ICS_VOICE_BLOB
+    icsblob_loaded = 0;
     ALOGI("Loading ICS blob for voice-volume");
     ics_dso_handle = dlopen("/system/lib/hw/audio.primary.ics.so", RTLD_NOW);
     if (ics_dso_handle == NULL) {
         char const *err_str = dlerror();
         ALOGE("wrapper_open: %s", err_str ? err_str : "unknown");
-        return -EINVAL;
+        goto continue_wrapper;
     }
 
     sym = HAL_MODULE_INFO_SYM_AS_STR;
@@ -591,7 +599,7 @@ static int wrapper_open(const hw_module_t* module,
         ALOGE("wrapper_open: couldn't find symbol %s", sym);
         dlclose(ics_dso_handle);
         ics_dso_handle = NULL;
-        return -EINVAL;
+        goto continue_wrapper;
     }
 
     hmi->dso = ics_dso_handle;
@@ -602,9 +610,13 @@ static int wrapper_open(const hw_module_t* module,
     if (ret) {
         dlclose(ics_dso_handle);
         ics_dso_handle = NULL;
-        return ret;
+        goto continue_wrapper;
     }
+
+    icsblob_loaded = 1;
 #endif
+
+continue_wrapper:
 
     copy_hw_dev = malloc(sizeof(struct audio_hw_device));
     if (!copy_hw_dev) {
@@ -620,12 +632,15 @@ static int wrapper_open(const hw_module_t* module,
     adev->set_voice_volume = wrapper_set_voice_volume;
     adev->set_mic_mute = wrapper_set_mic_mute;
     /* set_master_mute not supported by MR0_AUDIO_BLOB */
-#ifdef ICS_VOICE_BLOB
-    adev->set_mode = wrapper_set_mode_ics;
-    adev->set_parameters = wrapper_set_parameters_ics;
-#else
+
     adev->set_mode = wrapper_set_mode;
     adev->set_parameters = wrapper_set_parameters;
+#ifdef ICS_VOICE_BLOB
+    if(icsblob_loaded){
+        adev->set_voice_volume = wrapper_set_voice_volume_ics;
+        adev->set_mode = wrapper_set_mode_ics;
+        adev->set_parameters = wrapper_set_parameters_ics;
+     }
 #endif
 
     /* Output */
