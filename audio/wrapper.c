@@ -336,7 +336,7 @@ WRAP_STREAM_LOCKED_COMMON(standby, out, (struct audio_stream *stream),
 WRAP_STREAM_LOCKED_COMMON(set_parameters, out, (struct audio_stream *stream, const char *kv_pairs),
             (stream, kv_pairs), ("out_set_parameters: %s", kv_pairs))
 
-void wrapper_close_output_stream(struct audio_hw_device *dev,
+static void wrapper_close_output_stream(struct audio_hw_device *dev,
                             struct audio_stream_out* stream_out)
 {
     int i;
@@ -449,7 +449,9 @@ static int wrapper_set_voice_volume_ics(struct audio_hw_device *dev, float volum
 {
     ALOGI("ICS: set_voice_volume: %f", volume);
 
-    return ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
+    ics_hw_dev->set_voice_volume(ics_hw_dev, volume);
+
+    return wrapper_set_voice_volume(dev,volume);
 }
 #endif
 
