@@ -142,9 +142,9 @@ BOARD_HAVE_BLUETOOTH_TI := true
 BOARD_VENDOR_TI_GPS_HARDWARE := omap4
 BOARD_GPS_LIBRARIES := libgps
 
-# adb runs as user
-ADDITIONAL_DEFAULT_PROPERTIES += ro.secure=1
-ADDITIONAL_DEFAULT_PROPERTIES += ro.allow.mock.location=1
+# adb can runs as root
+ADDITIONAL_DEFAULT_PROPERTIES += ro.secure=0
+ADDITIONAL_DEFAULT_PROPERTIES += ro.allow.mock.location=0
 
 # Recovery
 TARGET_RECOVERY_FSTAB = $(COMMON_FOLDER)/root/fstab.mapphone_cdma
