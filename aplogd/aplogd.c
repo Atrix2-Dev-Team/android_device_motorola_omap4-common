@@ -256,7 +256,7 @@ aplogd_erase_legacy_files()
  */
 void aplogd_drop_root()
 {
-	if (0 != getuid())
+	if (0 != getuid() || g_current_storage != STORAGE_USERDATA)
 		return;
 	DPRINT("Dropping from root user to log user\n");
 	prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
@@ -481,10 +481,11 @@ int main (int argc, char* argv[])
 {
 	aplogd_erase_legacy_files();
 	// Dropping root MUST be the very first thing we do after the cleanup.
-	aplogd_drop_root();
 	DPRINT("Start initialize.\n");
 	aplogd_init_storage_refs();
 	aplogd_load_usr_cfg(argc, argv);
+     aplogd_config_load();
+     aplogd_drop_root();
 	DPRINT("aplogd io array initilize.\n");
 	aplogd_io_array_init();
 	DPRINT("open EventTagMap.\n");

@@ -292,10 +292,12 @@ unsigned int aplogd_get_filesize(STORAGE_T storage)
 
 STORAGE_T aplogd_calc_storage_pref()
 {
-        if (0 == usr_cfg_ext)
-            return STORAGE_USERDATA;
-        else
+        if (usr_cfg_ext && g_storage_path[STORAGE_SECONDARY])
             return STORAGE_SECONDARY;
+        else if (usr_cfg_ext && g_storage_path[STORAGE_EXTERNAL])
+            return STORAGE_EXTERNAL;
+
+        return STORAGE_USERDATA;
 }
 
 int aplogd_is_collected(char stream)
