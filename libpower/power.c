@@ -70,8 +70,10 @@ static void sysfs_write(char *path, char *s) {
     int fd = open(path, O_WRONLY);
 
     if (fd < 0) {
-        strerror_r(errno, buf, sizeof(buf));
-        ALOGE("Error opening %s: %s\n", path, buf);
+        if (errno != ENOENT){
+             strerror_r(errno, buf, sizeof(buf));
+             ALOGE("Error opening %s: %s\n", path, buf);
+        }
         return;
     }
 
@@ -95,8 +97,10 @@ static int sysfs_read(char *path, char *s, int s_size) {
 
     fd = open(path, O_RDONLY);
     if (fd < 0) {
-        strerror_r(errno, buf, sizeof(buf));
-        ALOGE("Error opening %s: %s\n", path, buf);
+        if (errno != ENOENT){
+            strerror_r(errno, buf, sizeof(buf));
+            ALOGE("Error opening %s: %s\n", path, buf);
+        }
         return fd;
     }
 
@@ -110,6 +114,26 @@ static int sysfs_read(char *path, char *s, int s_size) {
 
     close(fd);
     return len;
+}
+
+static void omap_power_calc_maxfreq(struct power_module *module){
+    int i;
+    char buf[15];
+    struct omap_power_module *omap_device = (struct omap_power_module *) module;
+
+    if (!omap_device->inited)
+        return;
+
+    if (!sysfs_read(CPUFREQ_CPU0 "scaling_max_freq", buf, sizeof(buf)))
+             return;
+    for (i = 0; i < freq_num; i++){
+              if(strtol(freq_list[i], NULL, 10) > strtol(buf, NULL, 10)){
+                  if (i == 0)
+                      i = 1;
+                  max_freq = freq_list[i-1];
+                  break;
+              }
+    }
 }
 
 static void omap_power_init(struct power_module *module) {
@@ -128,6 +152,7 @@ static void omap_power_init(struct power_module *module) {
     }
 
     max_freq = freq_list[freq_num - 1];
+    omap_power_calc_maxfreq(module);
     tmp = (NOM_FREQ_INDEX > freq_num) ? freq_num : NOM_FREQ_INDEX;
     nom_freq = freq_list[tmp - 1];
 
@@ -174,7 +199,8 @@ static void omap_power_set_interactive(struct power_module *module, int on) {
      * Lower maximum frequency when screen is off.  CPU 0 and 1 share a
      * cpufreq policy.
      */
-
+    if (!on)
+        omap_power_calc_maxfreq(module);
     sysfs_write(CPUFREQ_CPU0 "scaling_max_freq", on ? max_freq : nom_freq);
 }
 
