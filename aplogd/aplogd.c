@@ -299,7 +299,7 @@ void usage()
     printf("  -c, --collect:\t Streams to collect\n");
     printf("  -f, --format:\t Logcat format option\n");
     printf("  -s, --size:\t Maximum set size in MB\n");
-    printf("  -b, --backup:\t Max number for backup log folders\n");
+    printf("  -b, --backup:\t Max number for backup log\n");
     printf("  -q, --seq:\t Keep logs sequential when moving\n");
     printf("  -x, --ext:\t Store to external storage if available\n");
     printf("  -h, --help:\t usage help\n");

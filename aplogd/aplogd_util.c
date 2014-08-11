@@ -179,6 +179,7 @@ void filter_numstr(const char *str, char *numstr)
 
 long aplogd_util_cleardir(char *dir, int max_count)
 {
+        DPRINT("dir:%s max_count:%d\n",dir,max_count);
 	struct dirent *dirp;
 	DIR *dp;
 	long ret = 0;
@@ -204,8 +205,7 @@ long aplogd_util_cleardir(char *dir, int max_count)
 		}
 		while ((dirp=readdir(dp)) != NULL) {
 			if(strcmp(dirp->d_name, ".") ==0 ||
-			strcmp(dirp->d_name, "..") == 0 ||
-			!strstr(dirp->d_name, "No."))
+			   strcmp(dirp->d_name, "..") == 0)
 				continue;
 			snprintf(path, MAX_PATH_LEN,"%s/%s", dir, dirp->d_name);
 			if(stat(path, &buf) == -1) {
@@ -213,7 +213,7 @@ long aplogd_util_cleardir(char *dir, int max_count)
 				closedir(dp);
 				return -1;
 			}
-			if(S_ISDIR(buf.st_mode)){
+			if(strstr(dirp->d_name, "No.") && S_ISDIR(buf.st_mode)){
 				count++;
 				memset(d_name, 0, MAX_PATH_LEN);
 				filter_numstr(dirp->d_name, d_name);
@@ -225,6 +225,15 @@ long aplogd_util_cleardir(char *dir, int max_count)
 				if (dir_num > ret)
 					ret = dir_num;
 			}
+
+                        /*all backup is in a same directory */
+                        if( strstr(dirp->d_name, "backup.") && max_count == 1){
+ 				memset(d_name, 0, MAX_PATH_LEN);
+				filter_numstr(dirp->d_name, d_name);
+				dir_num = strtol(d_name, NULL, 10);
+				if (dir_num >= usr_cfg_backup)
+                                    unlink(path);
+                       }
 		}
 		closedir(dp);
 		DPRINT("count=%d max_count=%d oldest=%s ret=%ld\n", count, max_count, oldest, ret);
@@ -284,7 +293,12 @@ unsigned int aplogd_get_filesize(STORAGE_T storage)
 				size=size*1024*1024;
                         return size;
                 case STORAGE_USERDATA:
-                        return CONFIG_LOGFILE_MAX_VALUE_USERDATA;
+			size=usr_cfg_size;
+			if(size <= 0 || size > 10)/*The default size is 10M*/
+				size=CONFIG_LOGFILE_MAX_VALUE_USERDATA;
+			else
+				size=size*1024*1024;
+                        return size;
                 default:
                         return CONFIG_LOGFILE_MAX_VALUE_EXTERNAL;
         }
