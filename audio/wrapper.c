@@ -182,7 +182,12 @@ static ssize_t wrapper_read(struct audio_stream_in *stream, void* buffer,
                 ret = bytes;
         }
 #endif
+        if (ret != (ssize_t)bytes) {
+	    ALOGE("read %u bytes instead of %u", (unsigned int)ret, (unsigned int)bytes);
+        }
         DECREMENT_IN_USE();
+    } else {
+	    ALOGE("read on non-wrapped stream!");
     }
 
     return ret;
@@ -322,6 +327,8 @@ static int wrapper_write(struct audio_stream_out *stream, const void* buffer,
                 ret = bytes;
         }
         DECREMENT_IN_USE();
+    } else {
+	    ALOGE("write on non-wrapped stream!");
     }
 
     return ret;
